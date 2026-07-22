@@ -1,6 +1,5 @@
 // =====================================================================
-// Entangle — quantum-styled messenger, powered by Supabase
-// Fill these in from your Supabase project: Settings → API
+// Entangle — messenger, powered by Supabase
 // =====================================================================
 const SUPABASE_URL = "https://alzqrzuxrboessglbmyf.supabase.co";
 const SUPABASE_ANON_KEY =
@@ -9,34 +8,51 @@ const SUPABASE_ANON_KEY =
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const IMAGE_BUCKET = "chat-images";
+const AVATAR_BUCKET = "avatars";
+
+const ICONS = {
+  image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3-7 7-7s7 3 7 7"/></svg>',
+};
+
+function renderAvatar(el, url) {
+  if (!el) return;
+  if (url) {
+    el.innerHTML = '';
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "";
+    img.onerror = () => { el.innerHTML = ICONS.user; };
+    el.appendChild(img);
+  } else {
+    el.innerHTML = ICONS.user;
+  }
+}
 
 // -------------------- state --------------------
-let me = null; // { id, username }
-let activeConvo = null; // conversation id currently open
-let activePeer = null; // { id, username } for the open convo
-let messagesChannel = null; // realtime subscription for open convo
-let convoCache = new Map(); // convo_id -> { id, peer, lastMessage }
+let me = null;
+let activeConvo = null;
+let activePeer = null;
+let messagesChannel = null;
+let convoCache = new Map();
+let mobileView = 'list';
 
 // -------------------- element refs --------------------
 const authScreen = document.getElementById("authScreen");
 const appScreen = document.getElementById("appScreen");
-
-// mobile: single-pane nav between the conversation list and the open chat
-const backBtn = document.getElementById("backBtn");
-backBtn.addEventListener("click", () => {
-  appScreen.classList.remove("mobile-chat-open");
-});
+const listPanel = document.querySelector(".list-panel");
+const chatPanel = document.querySelector(".chat-panel");
 
 const loginForm = document.getElementById("loginForm");
 const signupForm = document.getElementById("signupForm");
 const loginError = document.getElementById("loginError");
 const signupError = document.getElementById("signupError");
+const backBtn = document.getElementById("backBtn");
 
+// Auth tabs
 document.querySelectorAll(".auth-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
-    document
-      .querySelectorAll(".auth-tab")
-      .forEach((t) => t.classList.remove("active"));
+    document.querySelectorAll(".auth-tab").forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
     const isLogin = tab.dataset.tab === "login";
     loginForm.classList.toggle("hidden", !isLogin);
@@ -44,12 +60,80 @@ document.querySelectorAll(".auth-tab").forEach((tab) => {
   });
 });
 
+// -------------------- mobile navigation --------------------
+function showMobileView(view) {
+  mobileView = view;
+  if (window.innerWidth <= 680) {
+    listPanel.classList.toggle("show-mobile", view === "list");
+    chatPanel.classList.toggle("show-mobile", view === "chat");
+  }
+}
+
+function isMobile() {
+  return window.innerWidth <= 680;
+}
+
+window.addEventListener("resize", () => {
+  if (!isMobile()) {
+    listPanel.classList.remove("show-mobile");
+    chatPanel.classList.remove("show-mobile");
+  } else {
+    showMobileView(mobileView);
+  }
+});
+
+backBtn.addEventListener("click", () => {
+  showMobileView("list");
+  activeConvo = null;
+  activePeer = null;
+  loadConversations();
+});
+
+// -------------------- signup avatar picker --------------------
+const avatarPickBtn = document.getElementById("avatarPickBtn");
+const signupAvatarInput = document.getElementById("signupAvatarInput");
+const signupAvatarPreview = document.getElementById("signupAvatarPreview");
+let pendingSignupAvatar = null;
+
+avatarPickBtn.addEventListener("click", () => signupAvatarInput.click());
+avatarPickBtn.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    signupAvatarInput.click();
+  }
+});
+
+signupAvatarInput.addEventListener("change", () => {
+  const file = signupAvatarInput.files[0];
+  if (!file) return;
+  pendingSignupAvatar = file;
+  renderAvatar(signupAvatarPreview, URL.createObjectURL(file));
+});
+
 // -------------------- auth --------------------
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   loginError.textContent = "";
-  const email = document.getElementById("loginEmail").value.trim();
+  const identifier = document.getElementById("loginIdentifier").value.trim();
   const password = document.getElementById("loginPassword").value;
+
+  if (!identifier) return;
+
+  let email = identifier;
+
+  if (!identifier.includes("@")) {
+    const { data: rows, error: lookupErr } = await sb.rpc(
+      "get_email_by_username",
+      { p_username: identifier },
+    );
+
+    if (lookupErr || !rows || rows.length === 0) {
+      loginError.textContent = "No account found with that username";
+      return;
+    }
+    email = rows;
+  }
+
   const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) loginError.textContent = error.message;
 });
@@ -63,17 +147,16 @@ signupForm.addEventListener("submit", async (e) => {
 
   if (!/^[a-zA-Z0-9_]{2,24}$/.test(username)) {
     signupError.textContent =
-      "handle must be 2-24 chars: letters, numbers, underscore";
+      "Username must be 2-24 characters: letters, numbers, underscore";
     return;
   }
 
-  // Pass username as user metadata — the trigger will read it
   const { data, error } = await sb.auth.signUp({
     email,
     password,
     options: {
-      data: { username }
-    }
+      data: { username },
+    },
   });
 
   if (error) {
@@ -82,7 +165,12 @@ signupForm.addEventListener("submit", async (e) => {
   }
 
   if (!data.session) {
-    signupError.textContent = "check your email to confirm, then sign in.";
+    signupError.textContent = "Check your email to confirm your account, then sign in.";
+    return;
+  }
+
+  if (pendingSignupAvatar) {
+    await uploadAvatar(data.user.id, pendingSignupAvatar);
   }
 });
 
@@ -103,32 +191,80 @@ sb.auth.onAuthStateChange(async (_event, session) => {
 async function enterApp(user) {
   const { data: profile, error } = await sb
     .from("profiles")
-    .select("id, username")
+    .select("id, username, avatar_url")
     .eq("id", user.id)
     .single();
 
   if (error || !profile) {
-    // signed in but no profile row yet (edge case) — bounce to signup flow
     console.warn("no profile found for user", error);
     return;
   }
 
   me = profile;
   document.getElementById("meName").textContent = me.username;
+  renderAvatar(document.getElementById("railAvatar"), me.avatar_url);
+
+  const railImg = document.getElementById("railAvatarImg");
+  if (me.avatar_url) {
+    railImg.src = me.avatar_url;
+    railImg.classList.remove("hidden");
+    document.getElementById("railAvatarPlaceholder").classList.add("hidden");
+  }
+
   authScreen.classList.add("hidden");
   appScreen.classList.remove("hidden");
+  showMobileView("list");
 
   await sb.from("profiles").update({ status: "online" }).eq("id", me.id);
   loadConversations();
+}
+
+// -------------------- avatar upload --------------------
+const railAvatar = document.getElementById("railAvatar");
+const meAvatarInput = document.getElementById("meAvatarInput");
+
+railAvatar.addEventListener("click", () => meAvatarInput.click());
+
+meAvatarInput.addEventListener("change", async () => {
+  const file = meAvatarInput.files[0];
+  if (!file || !me) return;
+  await uploadAvatar(me.id, file);
+  meAvatarInput.value = "";
+});
+
+async function uploadAvatar(userId, file) {
+  const path = `${userId}/${crypto.randomUUID()}-${file.name}`;
+  const { error: upErr } = await sb.storage
+    .from(AVATAR_BUCKET)
+    .upload(path, file, { upsert: true });
+
+  if (upErr) {
+    alert("photo upload failed: " + upErr.message);
+    return;
+  }
+
+  const { data: pub } = sb.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+
+  await sb
+    .from("profiles")
+    .update({ avatar_url: pub.publicUrl })
+    .eq("id", userId);
+
+  if (me && me.id === userId) {
+    me.avatar_url = pub.publicUrl;
+    renderAvatar(document.getElementById("railAvatar"), me.avatar_url);
+    const railImg = document.getElementById("railAvatarImg");
+    railImg.src = me.avatar_url;
+    railImg.classList.remove("hidden");
+    document.getElementById("railAvatarPlaceholder").classList.add("hidden");
+  }
 }
 
 // -------------------- find / start conversation --------------------
 const findHandle = document.getElementById("findHandle");
 const findError = document.getElementById("findError");
 
-document
-  .getElementById("findBtn")
-  .addEventListener("click", startConversationFromInput);
+document.getElementById("findBtn").addEventListener("click", startConversationFromInput);
 findHandle.addEventListener("keydown", (e) => {
   if (e.key === "Enter") startConversationFromInput();
 });
@@ -140,13 +276,13 @@ async function startConversationFromInput() {
 
   const { data: peer, error } = await sb
     .from("profiles")
-    .select("id, username")
+    .select("id, username, avatar_url")
     .ilike("username", handle)
     .neq("id", me.id)
     .maybeSingle();
 
   if (error || !peer) {
-    findError.textContent = "no one entangled under that handle";
+    findError.textContent = "No user found with that username";
     return;
   }
 
@@ -157,7 +293,6 @@ async function startConversationFromInput() {
 }
 
 async function getOrCreateDirectConvo(peerId) {
-  // find an existing 1:1 conversation shared with peer
   const { data: mine } = await sb
     .from("conversation_participants")
     .select("conversation_id")
@@ -173,7 +308,6 @@ async function getOrCreateDirectConvo(peerId) {
       .in("conversation_id", myConvoIds);
 
     if (shared && shared.length) {
-      // confirm it's a direct (non-group) convo
       const { data: convo } = await sb
         .from("conversations")
         .select("id, is_group")
@@ -210,7 +344,7 @@ async function loadConversations() {
   const list = document.getElementById("convoList");
 
   if (!convoIds.length) {
-    list.innerHTML = `<p class="empty-hint">No entanglements yet. Search a handle above to start one.</p>`;
+    list.innerHTML = `<p class="empty-hint">No conversations yet. Search to start chatting.</p>`;
     return;
   }
 
@@ -218,7 +352,7 @@ async function loadConversations() {
   for (const cid of convoIds) {
     const { data: others } = await sb
       .from("conversation_participants")
-      .select("user_id, profiles ( id, username )")
+      .select("user_id, profiles ( id, username, avatar_url )")
       .eq("conversation_id", cid)
       .neq("user_id", me.id);
 
@@ -247,17 +381,29 @@ async function loadConversations() {
   rows.forEach((r) => {
     const el = document.createElement("div");
     el.className = "convo-item" + (activeConvo === r.id ? " active" : "");
-    const preview = r.lastMessage
-      ? r.lastMessage.image_url
-        ? "📷 image"
-        : r.lastMessage.content
-      : "start the conversation";
+
+    const timeStr = r.lastMessage ? formatTime(r.lastMessage.created_at) : "";
+    let previewHtml = "No messages yet";
+    if (r.lastMessage) {
+      if (r.lastMessage.image_url) {
+        previewHtml = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><span>Photo</span>';
+      } else {
+        previewHtml = escapeHtml(r.lastMessage.content);
+      }
+    }
+
     el.innerHTML = `
-      <span class="avatar"></span>
+      <div class="avatar"></div>
       <div class="meta">
-        <div class="name">${escapeHtml(r.peer.username)}</div>
-        <div class="preview">${escapeHtml(preview)}</div>
+        <div class="name-row">
+          <div class="name">${escapeHtml(r.peer.username)}</div>
+          <div class="time">${timeStr}</div>
+        </div>
+        <div class="preview">${previewHtml}</div>
       </div>`;
+
+    renderAvatar(el.querySelector(".avatar"), r.peer.avatar_url);
+
     el.addEventListener("click", () => openConversation(r.id, r.peer));
     list.appendChild(el);
   });
@@ -268,14 +414,14 @@ async function openConversation(convoId, peer) {
   activeConvo = convoId;
   activePeer = peer;
 
-  appScreen.classList.add("mobile-chat-open");
+  showMobileView("chat");
+
   document.getElementById("emptyState").classList.add("hidden");
   document.getElementById("chatView").classList.remove("hidden");
   document.getElementById("peerName").textContent = peer.username;
+  renderAvatar(document.getElementById("peerAvatar"), peer.avatar_url);
 
-  document
-    .querySelectorAll(".convo-item")
-    .forEach((el) => el.classList.remove("active"));
+  document.querySelectorAll(".convo-item").forEach((el) => el.classList.remove("active"));
   loadConversations();
 
   const { data: msgs } = await sb
@@ -314,15 +460,16 @@ function renderMessage(m, animate) {
   const mine = m.sender_id === me.id;
 
   const row = document.createElement("div");
-  row.className = "msg-row" + (mine ? " mine" : "");
+  row.className = "msg-row" + (mine ? " mine" : " theirs");
 
   const bubble = document.createElement("div");
-  bubble.className = "bubble" + (animate ? " decohering" : "");
+  bubble.className = "bubble" + (animate ? " message-in" : "");
 
   if (m.image_url) {
     const img = document.createElement("img");
     img.src = m.image_url;
     img.alt = "shared image";
+    img.onerror = () => { img.style.display = "none"; };
     bubble.appendChild(img);
   }
   if (m.content) {
@@ -342,7 +489,7 @@ function renderMessage(m, animate) {
   box.appendChild(row);
 }
 
-// -------------------- composer: send text + image --------------------
+// -------------------- composer --------------------
 const composer = document.getElementById("composer");
 const messageInput = document.getElementById("messageInput");
 const attachBtn = document.getElementById("attachBtn");
@@ -415,17 +562,29 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function formatTime(dateStr) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  if (isToday) {
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+  if (diffDays < 7) {
+    return d.toLocaleDateString([], { weekday: "short" });
+  }
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
 // =====================================================================
-// ambient particle field — quiet, low-opacity "quantum foam" backdrop
+// ambient particle field
 // =====================================================================
 (function particleField() {
   const canvas = document.getElementById("field");
   const ctx = canvas.getContext("2d");
   let particles = [];
   let w, h;
-  const reduceMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)",
-  ).matches;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function resize() {
     w = canvas.width = window.innerWidth;
@@ -442,7 +601,7 @@ function escapeHtml(str) {
       r: Math.random() * 1.6 + 0.4,
       vx: (Math.random() - 0.5) * 0.15,
       vy: (Math.random() - 0.5) * 0.15,
-      hue: Math.random() > 0.5 ? "123,92,255" : "63,231,214",
+      hue: Math.random() > 0.5 ? "212,168,83" : "180,140,60",
       phase: Math.random() * Math.PI * 2,
     });
   }
@@ -457,20 +616,18 @@ function escapeHtml(str) {
       if (p.x > w) p.x = 0;
       if (p.y < 0) p.y = h;
       if (p.y > h) p.y = 0;
-      const flicker = 0.4 + 0.3 * Math.sin(p.phase);
+      const flicker = 0.3 + 0.2 * Math.sin(p.phase);
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(${p.hue}, ${flicker})`;
       ctx.fill();
     });
-    // faint entanglement lines between nearby particles
     for (let i = 0; i < particles.length; i++) {
       for (let j = i + 1; j < particles.length; j++) {
-        const a = particles[i],
-          b = particles[j];
+        const a = particles[i], b = particles[j];
         const d = Math.hypot(a.x - b.x, a.y - b.y);
         if (d < 110) {
-          ctx.strokeStyle = `rgba(123,92,255,${0.08 * (1 - d / 110)})`;
+          ctx.strokeStyle = `rgba(212,168,83,${0.06 * (1 - d / 110)})`;
           ctx.lineWidth = 0.6;
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
