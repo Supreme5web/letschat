@@ -455,11 +455,62 @@ html, body {
 }
 ::-webkit-scrollbar-track { background: transparent; }
 
+/* ---------- back button (hidden on desktop) ---------- */
+.back-btn { display: none; }
+
 /* ---------- responsive ---------- */
 @media (max-width: 760px) {
-  .app-screen { grid-template-columns: 1fr; }
-  .sidebar { display: none; }
-  .sidebar.show-mobile { display: flex; position: fixed; inset: 0; z-index: 5; width: 100%; }
+  .app-screen {
+    grid-template-columns: 1fr;
+  }
+
+  /* One pane visible at a time. Sidebar (convo list) is the default
+     view; opening a conversation switches to the chat pane. */
+  .sidebar {
+    display: flex;
+    width: 100%;
+  }
+  .chat-pane {
+    display: none;
+  }
+  .app-screen.mobile-chat-open .sidebar {
+    display: none;
+  }
+  .app-screen.mobile-chat-open .chat-pane {
+    display: flex;
+  }
+
+  .back-btn {
+    display: flex;
+  }
+
+  /* bigger touch targets */
+  .icon-btn { width: 42px; height: 42px; font-size: 1.05rem; }
+  .icon-btn.small { width: 28px; height: 28px; }
+  .btn-send { width: 44px; height: 44px; }
+
+  .auth-card { padding: 28px 22px; max-width: 100%; }
+
+  .sidebar { padding: 16px 12px; }
+  .chat-head { padding: 12px 14px; }
+  .messages { padding: 16px; gap: 10px; }
+  .bubble { max-width: 82%; font-size: 0.94rem; }
+  .bubble img { max-width: 200px; }
+
+  .composer {
+    padding: 12px 14px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  /* avoid font-size <16px on inputs so iOS doesn't auto-zoom on focus */
+  .field input, #findHandle, #messageInput {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 400px) {
+  .auth-card { padding: 24px 16px; }
+  .brand h1 { font-size: 1.4rem; }
 }
 
 /* ---------- reduced motion ---------- */
