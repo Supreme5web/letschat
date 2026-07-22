@@ -21,6 +21,12 @@ let convoCache = new Map(); // convo_id -> { id, peer, lastMessage }
 const authScreen = document.getElementById("authScreen");
 const appScreen = document.getElementById("appScreen");
 
+// mobile: single-pane nav between the conversation list and the open chat
+const backBtn = document.getElementById("backBtn");
+backBtn.addEventListener("click", () => {
+  appScreen.classList.remove("mobile-chat-open");
+});
+
 const loginForm = document.getElementById("loginForm");
 const signupForm = document.getElementById("signupForm");
 const loginError = document.getElementById("loginError");
@@ -262,6 +268,7 @@ async function openConversation(convoId, peer) {
   activeConvo = convoId;
   activePeer = peer;
 
+  appScreen.classList.add("mobile-chat-open");
   document.getElementById("emptyState").classList.add("hidden");
   document.getElementById("chatView").classList.remove("hidden");
   document.getElementById("peerName").textContent = peer.username;
