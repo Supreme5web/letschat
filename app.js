@@ -61,11 +61,24 @@ signupForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  const { data, error } = await sb.auth.signUp({ email, password });
+  // Pass username as user metadata — the trigger will read it
+  const { data, error } = await sb.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { username }
+    }
+  });
+
   if (error) {
     signupError.textContent = error.message;
     return;
   }
+
+  if (!data.session) {
+    signupError.textContent = "check your email to confirm, then sign in.";
+  }
+});
 
   // profile row (id must match auth.users.id)
   const uid = data.user?.id;
