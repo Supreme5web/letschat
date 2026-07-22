@@ -2,9 +2,9 @@
 // Entangle — quantum-styled messenger, powered by Supabase
 // Fill these in from your Supabase project: Settings → API
 // =====================================================================
-const SUPABASE_URL = "https://lcgclcqejpzevbfrigan.supabase.co";
+const SUPABASE_URL = "https://alzqrzuxrboessglbmyf.supabase.co";
 const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZ2NsY3FlanB6ZXZiZnJpZ2FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MzQ3NzYsImV4cCI6MjEwMDMxMDc3Nn0.MYlgCsB247qSlENL_GwTgsXX805wIsdjDedOUQNzmFM";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsenFyenV4cmJvZXNzZ2xibXlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MzQ3NzUsImV4cCI6MjEwMDMxMDc3NX0.l9MlPji-lUSd9u8FDYop9U06Yx6mpvL9zkqto_xbBgA";
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -73,23 +73,6 @@ signupForm.addEventListener("submit", async (e) => {
   if (error) {
     signupError.textContent = error.message;
     return;
-  }
-
-  if (!data.session) {
-    signupError.textContent = "check your email to confirm, then sign in.";
-  }
-});
-
-  // profile row (id must match auth.users.id)
-  const uid = data.user?.id;
-  if (uid) {
-    const { error: profErr } = await sb
-      .from("profiles")
-      .insert({ id: uid, username });
-    if (profErr) {
-      signupError.textContent = profErr.message;
-      return;
-    }
   }
 
   if (!data.session) {
