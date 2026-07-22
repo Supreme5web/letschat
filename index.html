@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entangle — quantum messaging</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="field"></canvas>
+
+<!-- ===================== AUTH SCREEN ===================== -->
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card glass">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <h1>Entangle</h1>
+    </div>
+    <p class="tagline">Messages don't travel. They collapse.</p>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Sign in</button>
+      <button class="auth-tab" data-tab="signup">Create account</button>
+    </div>
+
+    <form id="loginForm" class="auth-form">
+      <label class="field">
+        <span>Email</span>
+        <input type="email" id="loginEmail" required autocomplete="email">
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input type="password" id="loginPassword" required autocomplete="current-password">
+      </label>
+      <p class="auth-error" id="loginError"></p>
+      <button type="submit" class="btn-primary">Enter the field</button>
+    </form>
+
+    <form id="signupForm" class="auth-form hidden">
+      <label class="field">
+        <span>Handle</span>
+        <input type="text" id="signupUsername" required maxlength="24" placeholder="how others will find you">
+      </label>
+      <label class="field">
+        <span>Email</span>
+        <input type="email" id="signupEmail" required autocomplete="email">
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input type="password" id="signupPassword" required minlength="6" autocomplete="new-password">
+      </label>
+      <p class="auth-error" id="signupError"></p>
+      <button type="submit" class="btn-primary">Initialize state</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== APP SCREEN ===================== -->
+<div id="appScreen" class="app-screen hidden">
+
+  <aside class="sidebar glass">
+    <div class="sidebar-head">
+      <div class="me">
+        <span class="avatar" id="meAvatar"></span>
+        <div class="me-info">
+          <strong id="meName">—</strong>
+          <span class="status-line"><i class="dot dot-observed"></i>observed</span>
+        </div>
+      </div>
+      <button id="logoutBtn" class="icon-btn" title="Sign out">⏻</button>
+    </div>
+
+    <div class="new-chat">
+      <input type="text" id="findHandle" placeholder="find a handle to entangle with…">
+      <button id="findBtn" class="icon-btn" title="Start conversation">＋</button>
+    </div>
+    <p class="find-error" id="findError"></p>
+
+    <div class="convo-list" id="convoList">
+      <p class="empty-hint">No entanglements yet. Search a handle above to start one.</p>
+    </div>
+  </aside>
+
+  <main class="chat-pane">
+    <div id="emptyState" class="empty-state">
+      <span class="brand-mark big"></span>
+      <p>Select a thread, or entangle with someone new.</p>
+    </div>
+
+    <div id="chatView" class="chat-view hidden">
+      <header class="chat-head glass">
+        <span class="avatar" id="peerAvatar"></span>
+        <div class="peer-info">
+          <strong id="peerName">—</strong>
+          <span class="status-line" id="peerStatus"><i class="dot dot-observed"></i>observed</span>
+        </div>
+      </header>
+
+      <div class="messages" id="messages"></div>
+
+      <form id="composer" class="composer glass">
+        <button type="button" id="attachBtn" class="icon-btn" title="Attach image">📎</button>
+        <input type="file" id="imageInput" accept="image/*" class="hidden">
+        <div id="imagePreviewWrap" class="image-preview-wrap hidden">
+          <img id="imagePreview" alt="">
+          <button type="button" id="clearImage" class="icon-btn small">✕</button>
+        </div>
+        <input type="text" id="messageInput" placeholder="collapse a thought into words…" autocomplete="off">
+        <button type="submit" class="btn-send" title="Send">↑</button>
+      </form>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+</body>
+</html>
