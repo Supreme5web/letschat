@@ -1,123 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Entangle — quantum messaging</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Entangle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+<base target="_blank">
 </head>
 <body>
+  <canvas id="field"></canvas>
 
-<canvas id="field"></canvas>
-
-<!-- ===================== AUTH SCREEN ===================== -->
-<div id="authScreen" class="auth-screen">
-  <div class="auth-card glass">
-    <div class="brand">
-      <span class="brand-mark"></span>
-      <h1>Entangle</h1>
-    </div>
-    <p class="tagline">Messages don't travel. They collapse.</p>
-
-    <div class="auth-tabs">
-      <button class="auth-tab active" data-tab="login">Sign in</button>
-      <button class="auth-tab" data-tab="signup">Create account</button>
-    </div>
-
-    <form id="loginForm" class="auth-form">
-      <label class="field">
-        <span>Email</span>
-        <input type="email" id="loginEmail" required autocomplete="email">
-      </label>
-      <label class="field">
-        <span>Password</span>
-        <input type="password" id="loginPassword" required autocomplete="current-password">
-      </label>
-      <p class="auth-error" id="loginError"></p>
-      <button type="submit" class="btn-primary">Enter the field</button>
-    </form>
-
-    <form id="signupForm" class="auth-form hidden">
-      <label class="field">
-        <span>Handle</span>
-        <input type="text" id="signupUsername" required maxlength="24" placeholder="how others will find you">
-      </label>
-      <label class="field">
-        <span>Email</span>
-        <input type="email" id="signupEmail" required autocomplete="email">
-      </label>
-      <label class="field">
-        <span>Password</span>
-        <input type="password" id="signupPassword" required minlength="6" autocomplete="new-password">
-      </label>
-      <p class="auth-error" id="signupError"></p>
-      <button type="submit" class="btn-primary">Initialize state</button>
-    </form>
-  </div>
-</div>
-
-<!-- ===================== APP SCREEN ===================== -->
-<div id="appScreen" class="app-screen hidden">
-
-  <aside class="sidebar glass">
-    <div class="sidebar-head">
-      <div class="me">
-        <span class="avatar" id="meAvatar"></span>
-        <div class="me-info">
-          <strong id="meName">—</strong>
-          <span class="status-line"><i class="dot dot-observed"></i>observed</span>
-        </div>
+  <!-- ===================== AUTH SCREEN ===================== -->
+  <div id="authScreen" class="auth-screen">
+    <div class="spatial-card">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <h1>Entangle</h1>
       </div>
-      <button id="logoutBtn" class="icon-btn" title="Sign out">⏻</button>
-    </div>
-
-    <div class="new-chat">
-      <input type="text" id="findHandle" placeholder="find a handle to entangle with…">
-      <button id="findBtn" class="icon-btn" title="Start conversation">＋</button>
-    </div>
-    <p class="find-error" id="findError"></p>
-
-    <div class="convo-list" id="convoList">
-      <p class="empty-hint">No entanglements yet. Search a handle above to start one.</p>
-    </div>
-  </aside>
-
-  <main class="chat-pane">
-    <div id="emptyState" class="empty-state">
-      <span class="brand-mark big"></span>
-      <p>Select a thread, or entangle with someone new.</p>
-    </div>
-
-    <div id="chatView" class="chat-view hidden">
-      <header class="chat-head glass">
-        <button type="button" id="backBtn" class="icon-btn back-btn" title="Back to conversations">←</button>
-        <span class="avatar" id="peerAvatar"></span>
-        <div class="peer-info">
-          <strong id="peerName">—</strong>
-          <span class="status-line" id="peerStatus"><i class="dot dot-observed"></i>observed</span>
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Sign in</button>
+        <button class="auth-tab" data-tab="signup">Create account</button>
+      </div>
+      <form id="loginForm" class="auth-form">
+        <label class="field">
+          <span>Username or email</span>
+          <input type="text" id="loginIdentifier" required autocomplete="username">
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" id="loginPassword" required autocomplete="current-password">
+        </label>
+        <p class="auth-error" id="loginError"></p>
+        <button type="submit" class="btn-primary">Sign in</button>
+      </form>
+      <form id="signupForm" class="auth-form hidden">
+        <div class="avatar-picker">
+          <div class="avatar-picker-circle" id="avatarPickBtn" role="button" tabindex="0" aria-label="Add profile photo">
+            <span class="avatar avatar-lg" id="signupAvatarPreview">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5"/></svg>
+            </span>
+            <span class="avatar-picker-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16.5V8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><circle cx="12" cy="12" r="3.2"/></svg>
+            </span>
+          </div>
+          <input type="file" id="signupAvatarInput" accept="image/*" class="hidden">
+          <span class="avatar-picker-label">Add a profile photo (optional)</span>
         </div>
-      </header>
-
-      <div class="messages" id="messages"></div>
-
-      <form id="composer" class="composer glass">
-        <button type="button" id="attachBtn" class="icon-btn" title="Attach image">📎</button>
-        <input type="file" id="imageInput" accept="image/*" class="hidden">
-        <div id="imagePreviewWrap" class="image-preview-wrap hidden">
-          <img id="imagePreview" alt="">
-          <button type="button" id="clearImage" class="icon-btn small">✕</button>
-        </div>
-        <input type="text" id="messageInput" placeholder="collapse a thought into words…" autocomplete="off">
-        <button type="submit" class="btn-send" title="Send">↑</button>
+        <label class="field">
+          <span>Username</span>
+          <input type="text" id="signupUsername" required maxlength="24" placeholder="lowercase letters, numbers, underscore">
+        </label>
+        <label class="field">
+          <span>Email</span>
+          <input type="email" id="signupEmail" required autocomplete="email">
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" id="signupPassword" required minlength="6" autocomplete="new-password">
+        </label>
+        <p class="auth-error" id="signupError"></p>
+        <button type="submit" class="btn-primary">Create account</button>
       </form>
     </div>
-  </main>
-</div>
+  </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js"></script>
+  <!-- ===================== APP SCREEN ===================== -->
+  <div id="appScreen" class="app-screen hidden">
+
+    <!-- Left Rail -->
+    <nav class="rail">
+      <div class="rail-top">
+        <div class="rail-avatar" id="railAvatar" role="button" tabindex="0" aria-label="Change profile photo">
+          <img id="railAvatarImg" src="" alt="" class="hidden">
+          <svg id="railAvatarPlaceholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5"/></svg>
+        </div>
+      </div>
+      <div class="rail-items">
+        <button class="rail-item active" data-view="chats" title="Chats">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7A8.38 8.38 0 0 1 4 11.5a8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <span class="rail-label">Chats</span>
+        </button>
+      </div>
+      <div class="rail-bottom">
+        <button class="rail-item" id="logoutBtn" title="Sign out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          <span class="rail-label">Sign out</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Middle Panel: Conversation List -->
+    <aside class="list-panel">
+      <div class="list-header">
+        <div class="list-user">
+          <strong id="meName">—</strong>
+        </div>
+      </div>
+      <div class="search-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="findHandle" placeholder="Search" autocomplete="off">
+        <button class="icon-btn" id="findBtn" title="Start conversation" aria-label="Start conversation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        </button>
+      </div>
+      <p class="find-error" id="findError"></p>
+      <div class="convo-list" id="convoList">
+        <p class="empty-hint">No conversations yet. Search to start chatting.</p>
+      </div>
+    </aside>
+
+    <!-- Right Panel: Chat -->
+    <main class="chat-panel">
+      <div id="emptyState" class="empty-state">
+        <div class="empty-orb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        </div>
+        <p>Select a conversation to begin</p>
+      </div>
+
+      <div id="chatView" class="chat-view hidden">
+        <header class="chat-header">
+          <button type="button" id="backBtn" class="icon-btn back-btn" aria-label="Back to conversations">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="header-avatar" id="peerAvatar"></div>
+          <div class="header-info">
+            <strong id="peerName">—</strong>
+            <span id="peerStatus">Online</span>
+          </div>
+        </header>
+
+        <div class="messages" id="messages"></div>
+
+        <form id="composer" class="composer">
+          <button type="button" id="attachBtn" class="icon-btn" title="Attach image" aria-label="Attach image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <input type="file" id="imageInput" accept="image/*" class="hidden">
+          <div id="imagePreviewWrap" class="image-preview-wrap hidden">
+            <img id="imagePreview" alt="">
+            <button type="button" id="clearImage" class="icon-btn small" aria-label="Remove image">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off">
+          <button type="submit" class="btn-send" title="Send" aria-label="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </button>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <input type="file" id="meAvatarInput" accept="image/*" class="hidden">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
 </body>
 </html>
